@@ -1,3 +1,18 @@
+# Job files
+/jobs
+
+# Data files
+/data
+
+# Output figires
+/outputs
+
+# Documents
+/docs
+
+# "Old" Code
+/code/old
+
 # History files
 .Rhistory
 .Rapp.history
