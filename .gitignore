@@ -1,3 +1,6 @@
+*.RDS
+*.tsv
+*.out
 # Job files
 /jobs
 
@@ -10,8 +13,8 @@
 # Documents
 /docs
 
-# "Old" Code
-/code/old
+# "old" code/outputs
+/archive
 
 # History files
 .Rhistory
@@ -52,3 +55,4 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+.Rprofile
