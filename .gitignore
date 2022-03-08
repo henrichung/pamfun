@@ -2,6 +2,7 @@
 *.tsv
 *.out
 *.csv
+*.pdf
 # Job files
 /jobs
 
