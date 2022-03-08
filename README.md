@@ -10,7 +10,7 @@ The full FusionDB dataset (March 2022) consists of 8,907 distance microorganism 
 
 ### Scripts
 
- - 0_subset.R - This script subsets the full fusion dataset into a desired workable subset. For this analysis, the largest 50k fusion clusters from the balanced organism dataset were selected. Functions were further filtered to those which have a EC annotation mapped to them.
+ - 0_subset.R - This script subsets the full fusion dataset into a desired workable subset. For this analysis, the largest 50k fusion clusters from assmeblies in balanced organism dataset were selected. Functions were further filtered to those which have a EC annotation mapped to them.
 
  - 0_ec_fusion.R - This scripts annotates fusion clusters to an EC annotation resolved at 4 levels under certain conditions*.
 
@@ -26,7 +26,7 @@ The full FusionDB dataset (March 2022) consists of 8,907 distance microorganism 
 
 Necessary data/files to run this analysis is listed below.
 
-- balanced_organism_set.treemmer-RTL-0.9.gtdb.incl_taxonomy.tsv - Fusion data from balanced organism dataset.
+- balanced_organism_set.treemmer-RTL-0.9.gtdb.incl_taxonomy.tsv - Assemblies from the balanced organism dataset.
 
 - final_fusion_datafile.reduced_organism_set.treemmer.gtdb.top_50k.txt - list of largest 50k fusion clusters.
 
@@ -34,5 +34,4 @@ Necessary data/files to run this analysis is listed below.
 
 - br08902.json - KEGG organisms in taxonomic groups (Jan 2022)
 
->>>>>>> 91c8592216966c412091ff74b596bd6f710fc483
-
+- fusion_data.tsv - full fusion dataset.
