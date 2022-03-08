@@ -1,8 +1,3 @@
-
-# Pamfun
-
-PAMFUN is a project to analyze and predict functional pathways of bacterial proteins. 
-=======
 # PAMFUN
 
 PAMFUN is a microbial protein function analysis project utilizing FusionDB. The primary goal for this project is to develop methods that can identify pathways in both individual microorganisms and across entire microbiomes. 
