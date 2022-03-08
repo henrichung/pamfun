@@ -30,7 +30,7 @@ Necessary data/files to run this analysis is listed below.
 
 - final_fusion_datafile.reduced_organism_set.treemmer.gtdb.top_50k.txt - list of largest 50k fusion clusters.
 
-- uniprot-pe-exp_seguid_to_ec_mapping.tsv - matches each fusion protein to an EC annotation resolved at 4 levels.
+- uniprot-pe1-exp-ec.extended_by_hfsp.tsv - matches each fusion protein to an EC annotation resolved at 4 levels.
 
 - br08902.json - KEGG organisms in taxonomic groups (Jan 2022)
 
