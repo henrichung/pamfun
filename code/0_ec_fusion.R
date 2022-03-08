@@ -10,17 +10,18 @@
 library(data.table)
 library(tidyverse)
 rm(list = ls())
+
 hfsp_threshold = 20
 ec_threshold = 0.1
 
 # read in fusion to hfsp mapping
 seguid_to_ec <- read_tsv("data/uniprot-pe1-exp-ec.extended_by_hfsp.mapping") %>%
   filter(hfsp > hfsp_threshold) %>%
-  mutate(ec_number3 = gsub("\\.[0-9]+\\Z", "", ec_number, perl = TRUE))
+  mutate(ec_number3 = gsub("\\.[0-9]+\\Z", ".-", ec_number, perl = TRUE))
  head(seguid_to_ec)
 
 # read in fusion data
-subset_data <- data.table::fread("data/0_fusion_data_subset.tsv")
+subset_data <- data.table::fread("data/fusion_data_subset.tsv")
 mydata <- dtplyr::lazy_dt(subset_data)
 
 # Join fusion_to_ec and seguid_to_ec by seguid
@@ -49,7 +50,7 @@ filtered_fusion_to_ec <- fusion_to_ec %>%
 	left_join(select(fusion_to_ec, fusion_lvl_1, ec_number3)) %>%
 	unique() %>%
 	as.data.table()
-write_csv(filtered_fusion_to_ec, "outputs/0_fusion_to_ec.csv")
+write_csv(filtered_fusion_to_ec, "data/fusion_to_ec.csv")
 
 # Calculate how many fusion clusters have identical EC numbers.
 ec_duplicates <- fusion_to_ec2 %>%
@@ -59,7 +60,7 @@ ec_duplicates <- fusion_to_ec2 %>%
 head(ec_duplicates)
 length(unique(ec_duplicates$ec_number)) #291
 length(unique(ec_duplicates$fusion_lvl_1)) #718
-write_csv(ec_duplicates, "outputs/0_ec_duplicates.csv")
+write_csv(ec_duplicates, "outputs/ec_duplicates.csv")
 
 # Calculate how many EC numbers are assigned to multiple fusion clusters.
 fusion_duplicates <- fusion_to_ec2 %>% 
@@ -69,4 +70,6 @@ fusion_duplicates <- fusion_to_ec2 %>%
 head(fusion_duplicates)
 length(unique(fusion_duplicates$ec_number)) #731
 length(unique(fusion_duplicates$fusion_lvl_1)) #280
-write_csv(fusion_duplicates, "outputs/0_fusion_duplicates.csv")
+write_csv(fusion_duplicates, "outputs/fusion_duplicates.csv")
+
+quit()

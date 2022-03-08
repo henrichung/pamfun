@@ -14,18 +14,15 @@ library(data.table)
 library(stringr)
 rm(list = ls())
 
+
+# Identify what pathway each EC number participates in.
+# --------------------------- 
 # Read in data
 seguid_to_ec <- read_tsv("data/uniprot-pe1-exp-ec.extended_by_hfsp.mapping") 
 
 ec_queries <- seguid_to_ec %>%
 	pull(ec_number) %>%
 	unique()
-
-# read in Taxa file from KEGG
-kegg_taxa <- fromJSON(file= "data/br08611.json")
-
-# Identify what pathway each EC number participates in.
-# --------------------------- 
 
 ## Custom functions to parse KEGG
 fetch_term <- function(.x, base, term){
@@ -53,7 +50,7 @@ parse_results <- function(x, string){
 
 
 
-# First fetch pathway information from list of matched ECs
+# First list of all pathways known EC annotations participate in.
 pathways_list <- list()
 pathways_names <- list()
 while(length(ec_queries) != 0){
@@ -71,33 +68,28 @@ while(length(ec_queries) != 0){
 	ec_queries <- ec_queries[-1]
 }
 pathways <- unique(unlist(pathways_list))
-saveRDS(pathways, "pathways.RDS")
-
 
 # Look up each pathway and identify the modules. 
 # --------------------------- 
 
-# create results list to store pathway information
-res_list <- list()
-res_names <- list()
+# create pathwayinfoults list to store pathway information
+pathwayinfo_list <- list()
+pathwayinfo_names <- list()
 
 # loop through each pathway
 for(i in 1:length(pathways)){
 	message(Sys.time(), pathways[i], " ", length(pathways)-i)
 	temp_info <- fetch_term(pathways[i],base = "https://www.kegg.jp/entry/pathway+", term = "Name\\n|Class\\n|Module\\n|Enzyme\\n")
-	res_list <- append(res_list, list(temp_info))
-	res_names <- append(res_names, pathways[i])
+	pathwayinfo_list <- append(pathwayinfo_list, list(temp_info))
+	pathwayinfo_names <- append(pathwayinfo_names, pathways[i])
 }
-names(res_list) <- res_names
-saveRDS(res_list, "res_list.RDS")
-
-res_list <- readRDS("res_list.RDS")
+names(pathwayinfo_list) <- pathwayinfo_names
 # remove duplicates
-res_list <- res_list[!duplicated(res_list)]
+pathwayinfo_list <- pathwayinfo_list[!duplicated(pathwayinfo_list)]
 # remove NA
-res_list <- res_list[!is.na(res_list)]
-ind <- unlist(lapply(res_list, length)) == 4
-res_list <- res_list[ind]
+pathwayinfo_list <- pathwayinfo_list[!is.na(pathwayinfo_list)]
+ind <- unlist(lapply(pathwayinfo_list, length)) == 4
+pathwayinfo_list <- pathwayinfo_list[ind]
 
 # Function to parse the name, class, module, and enzyme information.
 custom_parse <- function(.x){
@@ -116,26 +108,66 @@ custom_parse <- function(.x){
 	return(list(list(ec), temp_info))
 }
 
-parsed_res <- lapply(res_list, custom_parse)
+parsed_res <- lapply(pathwayinfo_list, custom_parse)
 
 ecs <- lapply(parsed_res, function(x) x[[1]])
-info <- lapply(parsed_res, function(x) x[[2]])
-names(info) <- unlist(ecs)
-saveRDS(info, "info.RDS")
-info <- readRDS("info.RDS")
+pathway_info <- lapply(parsed_res, function(x) x[[2]])
+names(pathway_info) <- unlist(ecs)
+saveRDS(pathway_info, "pathway_info.RDS")
 
+
+
+# Calculate the two way combinations of every enzyme for each pathway.
+ec_enzymes <- lapply(info, function(x)x["enzymes"]) %>%
+	bind_rows(.id = "ec_id") %>%
+	filter(enzymes != "") %>%
+	rename(enzymes_a = "enzymes") %>%
+	mutate(enzymes_b = enzymes_a) %>%
+	group_by(ec_id) %>%
+	complete(enzymes_a, enzymes_b)
+
+# optional bit to remove reverse order interactions Ex: A x B, and B x A 
+ec_enzymes_one <- ec_enzymes %>%
+ 	group_by(grp = paste(pmax(enzymes_a, enzymes_b), pmin(enzymes_a, enzymes_b), sep = "_")) %>%
+ 	slice(1) %>%
+ 	ungroup() %>%
+ 	select(-grp) %>%
+ 	arrange(ec_id)
 
 # Look up each module and identify KOs
 # --------------------------- 
 
-# extract module numbers from pathway information
-modules <- unlist(lapply(info, function(x){x["module"]}))
-modules <- unique(modules[modules != ""])
-modules <- str_split(modules, pattern = "  ")
-modules_df <- do.call(rbind.data.frame, modules)
-colnames(modules_df) <- c("module_id", "desc")
+# filter pathway info to just bacterial pathways
+paths <- readRDS("data/protist_pathways.RDS") %>%
+	bind_rows() %>%
+	pull(num) %>%
+	unique() 
+bacteria_ecs <- paste("ec", paths, sep = "")
+ind <- names(pathway_info) %in% bacteria_ecs
 
-module_ids <- modules_df$module_id
+pathway_info <- pathway_info[ind]
+# extract module numbers from pathway information
+modules <- lapply(pathway_info, function(x){as.data.frame(unlist(x["module"]))})
+modules_classes <- lapply(pathway_info, function(x){paste0(unlist(x["class"]),  collapse = "_")})
+modules_names <- lapply(pathway_info, function(x){unlist(x["name"])})
+modules_labels <- mapply(function(x,y){paste(x, y, sep = "_")}, x = modules_names, y = modules_classes)
+names(modules) <- modules_labels
+modules_df <- bind_rows(modules, .id = "names_class") 
+colnames(modules_df) = c("names_class", "desc") 
+modules_df <- modules_df %>%
+	separate(names_class, into = c("pathway", "class", "subclass"), sep = "_") %>%
+	separate(desc, into = c("module_id", "desc"), sep = "  ") %>%
+	unique() %>% 
+	filter(!is.na(desc)) %>%
+	select(class, subclass, pathway, module_id, desc)
+rownames(modules_df) <- 1:nrow(modules_df)
+
+#
+write_csv(modules_df, "data/module_info.csv")
+#
+
+module_ids <- modules_df$mo_id
+# Match KOs to Enzymes
 # Match KOs to Enzymes
 
 # create modules to store modules
@@ -172,7 +204,7 @@ saveRDS(modules_ko, "modules_ko.RDS")
 modules_ko <- readRDS("modules_ko.RDS")
 modules_ko_df <- jsonlite::fromJSON("data/ko00001.json") %>%
 	as.data.frame()
-colnames(modules_ko_df ) <- c("ko_head", "class", "children")
+colnames(modules_ko_df) <- c("ko_head", "class", "children")
 
 modules_to_ko <- modules_ko_df  %>% 
 	as_tibble() %>%
@@ -190,13 +222,46 @@ modules_to_ko <- modules_ko_df  %>%
 	select(-temp) %>% filter(!is.na(ec_id)) %>%
 	unique()
 write_csv(modules_to_ko, "modules_to_ko.csv")
+
+modules_ec <- modules_to_ko %>%
+	select(ko_id, ec_id) %>%
+	separate(ko_id, into = c("ko_id", "ec_desc"), sep = "  ") %>%
+	left_join(modules_ko) %>%
+	left_join(modules_df) %>%
+	rename(mo_desc = "desc") %>%
+	unique() %>%
+	filter(!is.na(module_id)) %>%
+	rename(ec_number = ec_id) %>%
+	mutate(ec_number3 = gsub("\\.[0-9]+\\Z", ".-", ec_number, perl = TRUE))
+saveRDS(modules_ec, "modules_ec.RDS")
+
+ec_function <- modules_ec %>%
+	select(ko_id, ec_desc, ec_number, ec_number3) %>%
+	unique() %>%
+	mutate(ec_desc = gsub("\\[|\\]|EC:", "", ec_desc)) %>%
+	mutate(ec_desc = trimws(gsub("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+", "", ec_desc, perl = TRUE)))
+write_csv(ec_function, "ec_function.csv")
+
+module_enzymes <- modules_ec %>%
+	select(ec_number, module_id) %>%
+	rename(enzymes_a = "ec_number") %>%
+	mutate(enzymes_b = enzymes_a) %>%
+	group_by(module_id) %>%
+	complete(enzymes_a, enzymes_b) %>%
+	unique()
+
+
+enzyme_interactions <- list(ec_enzymes, module_enzymes)
+names(enzyme_interactions) <- c("pathway", "module") 
+enzyme_interactions <- bind_rows(enzyme_interactions, .id = "group") 
+write_csv(enzyme_interactions, "data/enzyme_interactions.csv")
 # Identify EC Pathways specific to protists
 # --------------------------- 
-quit()
+# read in Taxa file from KEGG
+kegg_taxa <- fromJSON(file= "data/br08611.json")
+
 # Separate out Bacter and Archae sections
 bacteria <- kegg_taxa[[2]][[5]]
-archea <- kegg_taxa[[2]][[6]]
-
 
 # function to extract information from list format to dataframes
 custom_extract <- function(.x){
@@ -205,28 +270,17 @@ custom_extract <- function(.x){
   }
 
 # list of dataframes
-bact_list <- lapply(bacteria, custom_extract)[[2]]
-archae_list <- lapply(archea, custom_extract)[[2]]
-
+bact_df <- lapply(bacteria, custom_extract)[[2]]
+colnames(bact_df) = "name"
 # name lists
-colnames(bact_list) = "name"
-colnames(archae_list) = "name"
 
 # convert named lists to dataframes
-bact_df <- bact_list %>%
+bact_df <- bact_df %>%
  	separate(name, into = c("abr", "name"), sep = "  ") %>%
  	filter(!is.na(name))
 
-arch_df <- archae_list %>%
- 	separate(name, into = c("abr", "name"), sep = "  ") %>%
- 	filter(!is.na(name))
-
-# save bacteria and archae dataframes as single list
-kegg_abb <- list(bact_df, arch_df) %>%
-	bind_rows(.id = "Kingdom") 
-
-abbr <- pull(kegg_abb, abr)
-
+# get bacterial abbreivations
+abbr <- unique(pull(bact_df, abr))
 
 paths <- list()
 assemblies <- list()
@@ -259,7 +313,19 @@ for(i in 1:length(abbr)){
 names(paths) = abbr
 names(assemblies) = abbr
 
-saveRDS(paths, "outputs/1_protist_pathways.RDS")
-saveRDS(paths, "outputs/1_protist_geneinfo.RDS")
+saveRDS(paths, "data/protist_pathways.RDS")
+saveRDS(assemblies, "data/protist_geneinfo.RDS")
+
+# Read in data
+seguid_to_ec <- read_tsv("data/uniprot-pe1-exp-ec.extended_by_hfsp.mapping") 
+
+ec_queries <- seguid_to_ec %>%
+	pull(ec_number) %>%
+	unique()
+
+
+quit()
+
+
 
 

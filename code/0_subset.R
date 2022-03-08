@@ -36,5 +36,5 @@ subset_data <- mydata %>%
 rm(fusion_data, mydata); gc()
 
 # write to file.
-write_tsv(subset_data, "data/0_fusion_data_subset.tsv")
+write_tsv(subset_data, "data/fusion_data_subset.tsv")
 

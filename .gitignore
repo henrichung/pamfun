@@ -1,6 +1,7 @@
 *.RDS
 *.tsv
 *.out
+*.csv
 # Job files
 /jobs
 
