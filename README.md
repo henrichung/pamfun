@@ -2,7 +2,7 @@
 
 PAMFUN is a microbial protein function analysis project utilizing FusionDB. The primary goal for this project is to develop methods that can identify pathways in both individual microorganisms and across entire microbiomes. 
 
-## Phylogentic Profile Analysis.
+## Phylogenetic Profile Analysis.
 
 Phylogenetic profiles are a method of protein analysis where each protein can be represented as a N-dimensional binary vector where N represents the number of unique organism genomes. Each N-th element in a vector represents whether a given protein is present in the N-th genome. The reasoning for this approach is that functionally related proteins are likely to have evolved in the same groups of organisms over time, and thus share similiar vectors. In this analysis, we apply phylogenetic profile analysis to FusionDB clusters. Because fusion clusters are groups of sequence similiar proteins believed to have the same function, fusion cluster and fusion function may be used interchangeably.
 
